@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Create More DT</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <div class="brand">
+        <span class="brand-mark">DT</span>
+        <div>
+          <h1>Create More DT</h1>
+          <p>Excel → Asta Document Services → dokumen DT per lokasi</p>
+        </div>
+      </div>
+      <a class="link-muted" href="#riwayat">Riwayat</a>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- Langkah 1 & 2 -->
+    <section class="grid-2">
+      <div class="card">
+        <div class="step">1</div>
+        <h2>Siapkan file Excel</h2>
+        <p class="muted">
+          Isi sheet <b>Header</b> (1 baris = 1 DT / 1 lokasi kirim) dan sheet <b>Items</b>
+          (barang per DT, dihubungkan lewat <code>no_dt</code>). Barang yang dikirim ke 3 lokasi = 3 DT.
+        </p>
+        <button id="btnTemplate" class="btn btn-secondary" type="button">Unduh template Excel</button>
+      </div>
+
+      <div class="card">
+        <div class="step">2</div>
+        <h2>Upload file</h2>
+        <label id="dropzone" class="dropzone" for="fileInput">
+          <input id="fileInput" type="file" accept=".xlsx,.xls,.csv" hidden>
+          <span class="dz-title">Tarik file ke sini atau klik untuk memilih</span>
+          <span class="dz-sub" id="fileName">.xlsx — sheet Header &amp; Items</span>
+        </label>
+      </div>
+    </section>
+
+    <!-- Hasil baca Excel -->
+    <section id="dataSection" class="card hidden">
+      <div class="section-head">
+        <div>
+          <div class="step">3</div>
+          <h2>Periksa &amp; cetak</h2>
+          <p class="muted" id="summary"></p>
+        </div>
+        <div class="actions">
+          <label class="field">
+            <span>Template ID</span>
+            <input id="templateId" type="text" placeholder="mis. TPL-007" autocomplete="off">
+          </label>
+          <button id="btnGenerate" class="btn btn-primary" type="button" disabled>Cetak DT terpilih</button>
+        </div>
+      </div>
+
+      <div id="globalErrors" class="alert alert-error hidden"></div>
+
+      <div class="table-wrap">
+        <table class="dt-table">
+          <thead>
+            <tr>
+              <th class="col-check"><input type="checkbox" id="checkAll" title="Pilih semua"></th>
+              <th>No DT</th>
+              <th>Tanggal</th>
+              <th>Customer</th>
+              <th>Lokasi tujuan</th>
+              <th class="num">Item</th>
+              <th>Status</th>
+              <th class="col-actions"></th>
+            </tr>
+          </thead>
+          <tbody id="dtBody"></tbody>
+        </table>
+      </div>
+
+      <div class="footer-actions">
+        <span class="muted" id="progressText"></span>
+        <button id="btnDownloadAll" class="btn btn-secondary hidden" type="button">Unduh semua hasil</button>
+      </div>
+    </section>
+
+    <!-- Riwayat -->
+    <section id="riwayat" class="card">
+      <div class="section-head">
+        <h2>Riwayat cetak</h2>
+        <button id="btnRefreshHistory" class="btn btn-ghost" type="button">Muat ulang</button>
+      </div>
+      <div class="table-wrap">
+        <table class="dt-table">
+          <thead>
+            <tr><th>Waktu</th><th>No DT</th><th>Template</th><th>Status</th><th class="col-actions"></th></tr>
+          </thead>
+          <tbody id="historyBody"><tr><td colspan="5" class="muted">Belum ada data.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="jsonDialog">
+    <div class="dialog-head">
+      <h3 id="jsonTitle">Payload JSON</h3>
+      <button class="btn btn-ghost" type="button" data-close>Tutup</button>
+    </div>
+    <pre id="jsonContent"></pre>
+    <div class="dialog-foot">
+      <button class="btn btn-secondary" type="button" id="btnCopyJson">Salin JSON</button>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="/js/dt-builder.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

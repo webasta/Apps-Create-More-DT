@@ -1,0 +1,24 @@
+services:
+  create-more-dt:
+    build: .
+    image: create-more-dt:latest
+    container_name: create-more-dt
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: 3000
+      STORAGE_DIR: /app/storage
+    ports:
+      # Default hanya bisa diakses dari VPS sendiri (lewat Nginx/reverse proxy).
+      # Ganti ke "3000:3000" kalau mau diakses langsung via IP:3000.
+      - "127.0.0.1:${HOST_PORT:-3000}:3000"
+    volumes:
+      - dt_storage:/app/storage
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  dt_storage:
