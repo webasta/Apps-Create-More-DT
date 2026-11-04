@@ -20,7 +20,7 @@ test('mengelompokkan item per DT dan menyusun payload Asta', () => {
   const p = buildAstaPayload('TPL-007', dts[0]);
   assert.strictEqual(p.template_id, 'TPL-007');
   assert.strictEqual(p.data.no_dt, 'DT-1');
-  assert.strictEqual(p.data.tanggal, '03-11-2026');
+  assert.strictEqual(p.data.tanggal, '3 November 2026');
   assert.deepStrictEqual(p.data.line_items[1], { description: 'Cable Lug', aku: '15', qty: '20', item_order: '2' });
 });
 
@@ -38,4 +38,17 @@ test('validasi: no_dt dobel, item yatim, DT tanpa item, qty salah', () => {
   assert.ok(dts[1].errors.some((e) => e.includes('tidak punya item')));
   assert.ok(errors.some((e) => e.includes('"Z"')));
   assert.ok(errors.some((e) => e.includes('Header baris 5')));
+});
+
+test('format tanggal Indonesia dari berbagai bentuk input', () => {
+  const { toText } = require('../src/shared/dt-builder');
+  assert.strictEqual(toText(new Date(2026, 10, 4), 'tanggal'), '4 November 2026');
+  assert.strictEqual(toText(new Date(2026, 0, 31, 23, 59, 59, 999), 'tanggal'), '1 Februari 2026'); // dibulatkan
+  assert.strictEqual(toText('05-11-2026', 'tanggal'), '5 November 2026');
+  assert.strictEqual(toText('05/11/2026', 'tgl_kirim'), '5 November 2026');
+  assert.strictEqual(toText('2026-11-05', 'delivery_date'), '5 November 2026');
+  assert.strictEqual(toText(46331, 'tanggal'), '5 November 2026'); // nomor seri Excel
+  assert.strictEqual(toText('31-02-2026', 'tanggal'), '31-02-2026'); // tanggal tidak valid dibiarkan
+  assert.strictEqual(toText('05-11-2026', 'keterangan'), '05-11-2026'); // bukan kolom tanggal
+  assert.strictEqual(toText(46330, 'qty'), '46330');
 });

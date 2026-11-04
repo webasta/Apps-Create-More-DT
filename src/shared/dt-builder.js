@@ -10,7 +10,8 @@
  *  - Sheet Header: 1 baris = 1 DT. Kolom wajib: no_dt.
  *  - Sheet Items : 1 baris = 1 item di sebuah DT. Kolom wajib: no_dt, description.
  *  - item_order diisi otomatis (1, 2, 3, ...) bila kosong.
- *  - Semua nilai dikirim sebagai string. Tanggal diformat DD-MM-YYYY.
+ *  - Semua nilai dikirim sebagai string. Tanggal diformat Indonesia: "4 November 2026"
+ *    (sel bertipe tanggal, atau teks 05-11-2026 / 2026-11-05 di kolom tanggal/tgl/date).
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
@@ -28,21 +29,54 @@
       .replace(/^_+|_+$/g, '');
   }
 
-  function pad(n) {
-    return String(n).padStart(2, '0');
+  const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+  /** Tanggal format Indonesia: "4 November 2026" */
+  function formatDate(d) {
+    return d.getDate() + ' ' + BULAN[d.getMonth()] + ' ' + d.getFullYear();
   }
 
-  function toText(value) {
+  // kolom yang dianggap tanggal: tanggal, tgl, date, tanggal_kirim, tgl_po, delivery_date, ...
+  function isDateKey(key) {
+    return /(^|_)(tanggal|tgl|date)(_|$)/.test(key || '');
+  }
+
+  function dateFromParts(y, m, d) {
+    const dt = new Date(y, m - 1, d);
+    return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d ? dt : null;
+  }
+
+  // Teks tanggal yang diketik manual: 05-11-2026, 05/11/2026, 5.11.2026, 2026-11-05
+  function parseDateText(s) {
+    let m = /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/.exec(s);
+    if (m) return dateFromParts(+m[3], +m[2], +m[1]);
+    m = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T].*)?$/.exec(s);
+    if (m) return dateFromParts(+m[1], +m[2], +m[3]);
+    return null;
+  }
+
+  function toText(value, key) {
     if (value == null) return '';
     if (value instanceof Date) {
       if (isNaN(value.getTime())) return '';
-      return pad(value.getDate()) + '-' + pad(value.getMonth() + 1) + '-' + value.getFullYear();
+      // bulatkan ke detik terdekat (Excel kadang menyimpan 23:59:59.999)
+      return formatDate(new Date(Math.round(value.getTime() / 1000) * 1000));
     }
     if (typeof value === 'number') {
+      // nomor seri tanggal Excel (mis. 46330) pada kolom tanggal
+      if (isDateKey(key) && value > 20000 && value < 80000) {
+        const d = new Date(Math.round((value - 25569) * 86400000));
+        return formatDate(new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+      }
       // hindari 0.30000000000000004 dari Excel
       return String(Math.round(value * 1e6) / 1e6);
     }
-    return String(value).trim();
+    const s = String(value).trim();
+    if (isDateKey(key)) {
+      const d = parseDateText(s);
+      if (d) return formatDate(d);
+    }
+    return s;
   }
 
   function normalizeRow(row) {
@@ -51,7 +85,7 @@
       const key = normalizeKey(k);
       // kolom tanpa judul (SheetJS menamainya __EMPTY, __EMPTY_1, ...) diabaikan
       if (!key || /^empty(_\d+)?$/.test(key)) return;
-      out[key] = toText(row[k]);
+      out[key] = toText(row[k], key);
     });
     return out;
   }
@@ -150,6 +184,7 @@
     ITEMS_KEY: ITEMS_KEY,
     normalizeKey: normalizeKey,
     toText: toText,
+    formatDate: formatDate,
     rowsToDts: rowsToDts,
     buildAstaData: buildAstaData,
     buildAstaPayload: buildAstaPayload,

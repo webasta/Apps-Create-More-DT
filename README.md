@@ -41,7 +41,7 @@ Aturan:
   (Judul kolom dinormalkan: huruf kecil, spasi → `_`. Contoh "Lokasi Tujuan" → `lokasi_tujuan`.)
 - Wajib: `no_dt` di Header (tidak boleh dobel), `no_dt` + `description` di Items. `qty` (bila ada) harus > 0.
 - `item_order` terisi otomatis 1, 2, 3… kalau tidak ada kolomnya.
-- Tanggal dikirim sebagai `DD-MM-YYYY`, semua nilai dikirim sebagai teks.
+- Tanggal dikirim dalam format Indonesia, mis. `4 November 2026` (sel tanggal Excel, atau teks `05-11-2026` / `2026-11-05` di kolom bernama tanggal/tgl/date). Semua nilai dikirim sebagai teks.
 
 Payload yang dikirim ke Asta untuk DT/2026/11/001 (bisa dilihat lewat tombol **JSON** di tiap baris):
 
@@ -50,7 +50,7 @@ Payload yang dikirim ke Asta untuk DT/2026/11/001 (bisa dilihat lewat tombol **J
   "template_id": "TPL-007",
   "data": {
     "no_dt": "DT/2026/11/001",
-    "tanggal": "04-11-2026",
+    "tanggal": "4 November 2026",
     "customer_name": "PT. Nov Oilfield Service",
     "lokasi_tujuan": "Site Balikpapan",
     "line_items": [
