@@ -78,8 +78,8 @@ function checkBasicAuth(req) {
 }
 function publicJob(job) {
   if (!job) return null;
-  const { id, no_dt, status, file_url, file_name, error, warning, raw_response, created_at, updated_at, template_id } = job;
-  return { id, no_dt, status, file_url, file_name, error, warning, raw_response, created_at, updated_at, template_id };
+  const { id, no_dt, status, file_url, docx_url, file_name, error, warning, raw_response, created_at, updated_at, template_id } = job;
+  return { id, no_dt, status, file_url, docx_url, file_name, error, warning, raw_response, created_at, updated_at, template_id };
 }
 function serveStatic(res, file) {
   fs.readFile(file, (err, data) => {
@@ -198,6 +198,7 @@ server.listen(config.port, () => {
   console.log(`  Template ID   : ${config.astaTemplateId || '(diisi dari halaman)'}`);
   console.log(`  Callback      : ${asta.callbackEnabled() ? config.publicBaseUrl + '/api/callback/:jobId' : 'nonaktif'}`);
   console.log(`  Basic auth    : ${config.appUsername ? 'aktif' : 'NONAKTIF (isi APP_USERNAME & APP_PASSWORD di .env)'}`);
+  asta.recoverStuckJobs().catch((err) => console.error('[recover]', err));
 });
 
 module.exports = server;

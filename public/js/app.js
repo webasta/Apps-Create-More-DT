@@ -125,9 +125,12 @@
       case 'done': {
         const isLocal = job.file_url && job.file_url.startsWith('/files/');
         const dl = isLocal ? `${job.file_url}?download=1` : job.file_url;
+        const docx = job.docx_url
+          ? `<a href="${esc(job.docx_url.startsWith('/files/') ? job.docx_url + '?download=1' : job.docx_url)}" ${job.docx_url.startsWith('/files/') ? 'download' : 'target="_blank" rel="noopener"'}>DOCX</a>`
+          : '';
         return `<span class="badge b-ok">Selesai</span><span class="result-links">
           <a href="${esc(job.file_url)}" target="_blank" rel="noopener">Buka</a>
-          <a href="${esc(dl)}" ${isLocal ? 'download' : 'target="_blank" rel="noopener"'}>Unduh</a></span>
+          <a href="${esc(dl)}" ${isLocal ? 'download' : 'target="_blank" rel="noopener"'}>Unduh PDF</a>${docx}</span>
           ${job.warning ? `<span class="err-text">${esc(job.warning)}</span>` : ''}`;
       }
       default:
@@ -296,7 +299,9 @@
         const t = new Date(j.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
         const badge = j.status === 'done' ? 'b-ok' : j.status === 'error' ? 'b-err' : 'b-wait';
         const label = { done: 'Selesai', error: 'Gagal', queued: 'Antre', processing: 'Diproses', waiting: 'Menunggu Asta' }[j.status] || j.status;
-        const link = j.status === 'done' && j.file_url ? `<a class="btn btn-ghost btn-sm" href="${esc(j.file_url)}" target="_blank" rel="noopener">Buka</a>` : '';
+        const link = j.status === 'done' && j.file_url
+          ? `<a class="btn btn-ghost btn-sm" href="${esc(j.file_url)}" target="_blank" rel="noopener">PDF</a>${j.docx_url ? `<a class="btn btn-ghost btn-sm" href="${esc(j.docx_url)}${j.docx_url.startsWith('/files/') ? '?download=1' : ''}" target="_blank" rel="noopener">DOCX</a>` : ''}`
+          : '';
         return `<tr><td>${esc(t)}</td><td>${esc(j.no_dt)}</td><td>${esc(j.template_id)}</td>
           <td><span class="badge ${badge}">${esc(label)}</span>${j.status !== 'done' ? rawLink(j) : ''}${j.status === 'error' ? `<span class="err-text">${esc(j.error)}</span>` : ''}</td>
           <td class="col-actions">${link}</td></tr>`;

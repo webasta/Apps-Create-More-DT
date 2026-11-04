@@ -14,8 +14,12 @@ const config = require('./config');
 const store = require('./store');
 const { buildAstaPayload } = require('./shared/dt-builder');
 
-const URL_KEYS = ['file_url', 'download_url', 'downloadUrl', 'fileUrl', 'document_url', 'documentUrl', 'pdf_url', 'pdfUrl', 'url', 'link', 'href'];
+// urutan = prioritas: PDF dulu
+const URL_KEYS = ['pdf_url', 'pdfUrl', 'pdf', 'file_url', 'download_url', 'downloadUrl', 'fileUrl', 'document_url', 'documentUrl', 'pdf_url', 'pdfUrl', 'url', 'link', 'href'];
+const DOCX_KEYS = ['docx_url', 'docxUrl', 'docx', 'word_url', 'wordUrl'];
 const B64_KEYS = ['file_base64', 'base64', 'file', 'content', 'document', 'pdf', 'data'];
+// sub-objek yang bukan hasil (mis. info template) tidak ikut dicari
+const SKIP_KEYS = new Set(['template', 'request', 'input', 'payload', 'meta']);
 const JOBID_KEYS = ['job_id', 'jobId', 'request_id', 'requestId', 'task_id', 'taskId', 'id'];
 const STATUS_ERROR = /^(error|failed|fail|gagal)$/i;
 
@@ -54,7 +58,8 @@ function findIn(obj, keys, test, depth = 0) {
   for (const k of keys) {
     if (k in obj && test(obj[k])) return obj[k];
   }
-  for (const v of Object.values(obj)) {
+  for (const [k, v] of Object.entries(obj)) {
+    if (SKIP_KEYS.has(k)) continue;
     if (v && typeof v === 'object') {
       const found = findIn(v, keys, test, depth + 1);
       if (found !== undefined) return found;
@@ -127,8 +132,10 @@ async function interpretResult(job, raw, opts = {}) {
   }
 
   // 2. URL file (absolut, atau relatif seperti "/storage/xxx.pdf" -> digabung dengan host Asta)
-  const url = findIn(json, URL_KEYS, looksLikeUrl);
-  if (url) return handleUrl(job, url, json);
+  //    Asta: { document: { pdf: "https://...pdf", docx: "https://...docx" } }
+  const docxUrl = findIn(json, DOCX_KEYS, looksLikeUrl);
+  const url = findIn(json, URL_KEYS, looksLikeUrl) || docxUrl;
+  if (url) return handleUrl(job, url, json, docxUrl && docxUrl !== url ? docxUrl : null);
   const relUrl = findIn(json, URL_KEYS.concat(['path', 'file_path', 'filePath']), (v) => typeof v === 'string' && /^\/[^/\s][^\s]*\.(pdf|docx?|xlsx|odt)(\?.*)?$/i.test(v));
   if (relUrl) return handleUrl(job, new URL(relUrl, config.astaApiUrl).href, json);
 
@@ -168,14 +175,24 @@ async function interpretResult(job, raw, opts = {}) {
   });
 }
 
-async function handleUrl(job, url, json) {
+async function handleUrl(job, url, json, docxUrl) {
   if (!config.astaDownloadResult) {
-    return store.update(job.id, { status: 'done', file_url: url, remote_url: url });
+    return store.update(job.id, { status: 'done', file_url: url, remote_url: url, docx_url: docxUrl || undefined });
+  }
+  // file pendamping (DOCX) — kalau gagal diunduh, pakai link asli Asta
+  let docx;
+  if (docxUrl) {
+    try {
+      const d = await downloadUrl(docxUrl);
+      docx = `/files/${encodeURIComponent(store.saveFile(job.id, job.no_dt, d.ext, d.buf))}`;
+    } catch {
+      docx = docxUrl;
+    }
   }
   try {
     const { buf, ext } = await downloadUrl(url);
     const fileName = store.saveFile(job.id, job.no_dt, ext, buf);
-    return store.update(job.id, { status: 'done', file_name: fileName, file_url: `/files/${encodeURIComponent(fileName)}`, remote_url: url });
+    return store.update(job.id, { status: 'done', file_name: fileName, file_url: `/files/${encodeURIComponent(fileName)}`, remote_url: url, docx_url: docx, error: undefined });
   } catch (err) {
     // tetap berikan link asli kalau unduh gagal
     return store.update(job.id, { status: 'done', file_url: url, remote_url: url, warning: err.message, raw_response: json ? short(json) : undefined });
@@ -257,4 +274,28 @@ function enqueueMany(dts, templateId) {
   return jobs;
 }
 
-module.exports = { generateOne, enqueueMany, interpretResult, callbackEnabled };
+/**
+ * Saat server start: job yang tertahan di "waiting"/"processing" dibaca ulang dari response yang tersimpan
+ * (mis. dari versi lama yang belum mengenali format response Asta).
+ */
+async function recoverStuckJobs() {
+  for (const job of store.list(1000)) {
+    if (!['waiting', 'processing', 'queued'].includes(job.status)) continue;
+    if (job.raw_response && /^\s*\{/.test(job.raw_response)) {
+      try {
+        const updated = await interpretResult(
+          job,
+          { contentType: 'application/json', body: Buffer.from(job.raw_response) },
+          { allowWaiting: callbackEnabled() }
+        );
+        console.log(`[recover] ${job.no_dt} -> ${updated.status}`);
+      } catch (err) {
+        store.update(job.id, { status: 'error', error: err.message });
+      }
+    } else if (job.status !== 'waiting' || !callbackEnabled()) {
+      store.update(job.id, { status: 'error', error: 'Proses terhenti (server di-restart). Silakan cetak ulang.' });
+    }
+  }
+}
+
+module.exports = { generateOne, enqueueMany, interpretResult, callbackEnabled, recoverStuckJobs };
