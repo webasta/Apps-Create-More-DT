@@ -121,7 +121,7 @@
     switch (job.status) {
       case 'queued': return `<span class="badge b-idle">Antre</span>`;
       case 'processing': return `<span class="badge b-wait">Diproses…</span>`;
-      case 'waiting': return `<span class="badge b-wait">Menunggu Asta…</span>`;
+      case 'waiting': return `<span class="badge b-wait">Menunggu Asta…</span>${rawLink(job)}`;
       case 'done': {
         const isLocal = job.file_url && job.file_url.startsWith('/files/');
         const dl = isLocal ? `${job.file_url}?download=1` : job.file_url;
@@ -131,9 +131,30 @@
           ${job.warning ? `<span class="err-text">${esc(job.warning)}</span>` : ''}`;
       }
       default:
-        return `<span class="badge b-err">Gagal</span><span class="err-text">${esc(job.error || 'Terjadi kesalahan')}</span>`;
+        return `<span class="badge b-err">Gagal</span>${rawLink(job)}<span class="err-text">${esc(job.error || 'Terjadi kesalahan')}</span>`;
     }
   }
+
+  // tombol untuk melihat balasan asli Asta (debug)
+  const rawStore = {};
+  function rawLink(job) {
+    if (!job || !job.raw_response) return '';
+    rawStore[job.id] = job;
+    return `<span class="result-links"><a href="#" data-raw="${esc(job.id)}">Response</a></span>`;
+  }
+  function showRaw(id) {
+    const job = rawStore[id];
+    if (!job) return;
+    let txt = job.raw_response;
+    try { txt = JSON.stringify(JSON.parse(txt), null, 2); } catch { /* bukan JSON utuh */ }
+    $('jsonTitle').textContent = `Response Asta — ${job.no_dt}`;
+    $('jsonContent').textContent = txt;
+    $('jsonDialog').showModal();
+  }
+  document.addEventListener('click', (e) => {
+    const id = e.target && e.target.dataset && e.target.dataset.raw;
+    if (id) { e.preventDefault(); showRaw(id); }
+  });
 
   function renderTable() {
     const body = $('dtBody');
@@ -277,7 +298,7 @@
         const label = { done: 'Selesai', error: 'Gagal', queued: 'Antre', processing: 'Diproses', waiting: 'Menunggu Asta' }[j.status] || j.status;
         const link = j.status === 'done' && j.file_url ? `<a class="btn btn-ghost btn-sm" href="${esc(j.file_url)}" target="_blank" rel="noopener">Buka</a>` : '';
         return `<tr><td>${esc(t)}</td><td>${esc(j.no_dt)}</td><td>${esc(j.template_id)}</td>
-          <td><span class="badge ${badge}">${esc(label)}</span>${j.status === 'error' ? `<span class="err-text">${esc(j.error)}</span>` : ''}</td>
+          <td><span class="badge ${badge}">${esc(label)}</span>${j.status !== 'done' ? rawLink(j) : ''}${j.status === 'error' ? `<span class="err-text">${esc(j.error)}</span>` : ''}</td>
           <td class="col-actions">${link}</td></tr>`;
       }).join('');
     } catch { /* abaikan */ }

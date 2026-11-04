@@ -71,7 +71,7 @@ const looksLikeB64 = (v) => {
 };
 const looksLikeId = (v) => (typeof v === 'string' && v.length > 0 && v.length < 200) || typeof v === 'number';
 
-function short(text, n = 600) {
+function short(text, n = 4000) {
   const s = typeof text === 'string' ? text : JSON.stringify(text);
   return s && s.length > n ? s.slice(0, n) + '…' : s;
 }
@@ -126,9 +126,11 @@ async function interpretResult(job, raw, opts = {}) {
     return store.update(job.id, { status: 'error', error: message || 'Asta mengembalikan status gagal.', raw_response: short(json) });
   }
 
-  // 2. URL file
+  // 2. URL file (absolut, atau relatif seperti "/storage/xxx.pdf" -> digabung dengan host Asta)
   const url = findIn(json, URL_KEYS, looksLikeUrl);
   if (url) return handleUrl(job, url, json);
+  const relUrl = findIn(json, URL_KEYS.concat(['path', 'file_path', 'filePath']), (v) => typeof v === 'string' && /^\/[^/\s][^\s]*\.(pdf|docx?|xlsx|odt)(\?.*)?$/i.test(v));
+  if (relUrl) return handleUrl(job, new URL(relUrl, config.astaApiUrl).href, json);
 
   // 3. base64
   const b64 = findIn(json, B64_KEYS, looksLikeB64);
@@ -141,12 +143,20 @@ async function interpretResult(job, raw, opts = {}) {
     return store.update(job.id, { status: 'done', file_name: fileName, file_url: `/files/${encodeURIComponent(fileName)}` });
   }
 
-  // 4. job id -> tunggu callback
+  // 4. job id -> tunggu callback (hanya bila callback aktif; kalau tidak, jangan menggantung)
   const remoteId = findIn(json, JOBID_KEYS, looksLikeId);
-  if (opts.allowWaiting && (remoteId !== undefined || callbackEnabled())) {
+  if (opts.allowWaiting && callbackEnabled()) {
     return store.update(job.id, {
       status: 'waiting',
       remote_id: remoteId !== undefined ? String(remoteId) : undefined,
+      raw_response: short(json),
+    });
+  }
+  if (remoteId !== undefined) {
+    return store.update(job.id, {
+      status: 'error',
+      remote_id: String(remoteId),
+      error: `Asta memproses secara async (id ${remoteId}), tetapi callback belum diaktifkan. Klik "Response" untuk melihat balasan Asta.`,
       raw_response: short(json),
     });
   }
