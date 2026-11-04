@@ -142,7 +142,27 @@ async function handle(req, res) {
       api_url: config.astaApiUrl,
       callback_enabled: asta.callbackEnabled(),
       max_dt: MAX_DT_PER_REQUEST,
+      retention_days: config.jobRetentionDays,
     });
+  }
+
+  // Hapus riwayat: DELETE /api/jobs?older_than_days=N  (N=0 -> semua)
+  if (req.method === 'DELETE' && p === '/api/jobs') {
+    const days = parseInt(url.searchParams.get('older_than_days'), 10);
+    if (!Number.isFinite(days) || days < 0) return sendJson(res, 400, { ok: false, error: 'older_than_days tidak valid.' });
+    const deleted = store.removeOlderThan(days);
+    console.log(`[hapus] ${deleted} riwayat (lebih lama dari ${days} hari)`);
+    return sendJson(res, 200, { ok: true, deleted });
+  }
+
+  // Hapus satu riwayat: DELETE /api/jobs/:id
+  const dm = /^\/api\/jobs\/([a-f0-9]{16})$/.exec(p);
+  if (req.method === 'DELETE' && dm) {
+    const job = store.get(dm[1]);
+    if (!job) return sendJson(res, 404, { ok: false, error: 'Riwayat tidak ditemukan.' });
+    if (store.ACTIVE.has(job.status)) return sendJson(res, 409, { ok: false, error: 'DT masih diproses, belum bisa dihapus.' });
+    store.remove(job.id);
+    return sendJson(res, 200, { ok: true, deleted: 1 });
   }
 
   // Generate: body { template_id, dts: [{ no_dt, header:{...}, items:[...] }] }
@@ -158,7 +178,7 @@ async function handle(req, res) {
 
   if (req.method === 'GET' && p === '/api/jobs') {
     const ids = (url.searchParams.get('ids') || '').split(',').filter(Boolean);
-    const jobs = ids.length ? ids.map((id) => publicJob(store.get(id))).filter(Boolean) : store.list(100).map(publicJob);
+    const jobs = ids.length ? ids.map((id) => publicJob(store.get(id))).filter(Boolean) : store.list(500).map(publicJob);
     return sendJson(res, 200, { ok: true, jobs });
   }
 
@@ -198,6 +218,7 @@ server.listen(config.port, () => {
   console.log(`  Template ID   : ${config.astaTemplateId || '(diisi dari halaman)'}`);
   console.log(`  Callback      : ${asta.callbackEnabled() ? config.publicBaseUrl + '/api/callback/:jobId' : 'nonaktif'}`);
   console.log(`  Basic auth    : ${config.appUsername ? 'aktif' : 'NONAKTIF (isi APP_USERNAME & APP_PASSWORD di .env)'}`);
+  console.log(`  Simpan riwayat: ${config.jobRetentionDays > 0 ? config.jobRetentionDays + ' hari' : 'selamanya (hapus manual)'}`);
   asta.recoverStuckJobs().catch((err) => console.error('[recover]', err));
 });
 

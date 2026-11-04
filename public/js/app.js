@@ -295,7 +295,7 @@
         body.innerHTML = `<tr><td colspan="5" class="muted">Belum ada data.</td></tr>`;
         return;
       }
-      body.innerHTML = res.jobs.slice(0, 50).map((j) => {
+      body.innerHTML = res.jobs.slice(0, 200).map((j) => {
         const t = new Date(j.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
         const badge = j.status === 'done' ? 'b-ok' : j.status === 'error' ? 'b-err' : 'b-wait';
         const label = { done: 'Selesai', error: 'Gagal', queued: 'Antre', processing: 'Diproses', waiting: 'Menunggu Asta' }[j.status] || j.status;
@@ -304,7 +304,7 @@
           : '';
         return `<tr><td>${esc(t)}</td><td>${esc(j.no_dt)}</td><td>${esc(j.template_id)}</td>
           <td><span class="badge ${badge}">${esc(label)}</span>${j.status !== 'done' ? rawLink(j) : ''}${j.status === 'error' ? `<span class="err-text">${esc(j.error)}</span>` : ''}</td>
-          <td class="col-actions">${link}</td></tr>`;
+          <td class="col-actions">${link}${['queued', 'processing'].includes(j.status) ? '' : `<button class="btn btn-ghost btn-sm btn-del" data-del="${esc(j.id)}" title="Hapus riwayat ini">Hapus</button>`}</td></tr>`;
       }).join('');
     } catch { /* abaikan */ }
   }
@@ -345,6 +345,28 @@
   $('btnGenerate').addEventListener('click', generate);
   $('btnDownloadAll').addEventListener('click', downloadAll);
   $('btnRefreshHistory').addEventListener('click', loadHistory);
+
+  // ---------- hapus riwayat ----------
+  async function clearHistory() {
+    const days = +$('clearRange').value;
+    const label = days === 0 ? 'SEMUA riwayat' : `riwayat yang lebih lama dari ${days} hari`;
+    if (!confirm(`Hapus ${label} beserta file PDF/DOCX-nya? Tindakan ini tidak bisa dibatalkan.`)) return;
+    try {
+      const res = await api(`/api/jobs?older_than_days=${days}`, { method: 'DELETE' });
+      toast(res.deleted ? `${res.deleted} riwayat dihapus.` : 'Tidak ada riwayat yang cocok untuk dihapus.');
+      loadHistory();
+    } catch (err) { toast('Gagal menghapus: ' + err.message); }
+  }
+  $('btnClearHistory').addEventListener('click', clearHistory);
+  $('historyBody').addEventListener('click', async (e) => {
+    const id = e.target.dataset && e.target.dataset.del;
+    if (!id) return;
+    if (!confirm('Hapus riwayat ini beserta file PDF/DOCX-nya?')) return;
+    try {
+      await api(`/api/jobs/${id}`, { method: 'DELETE' });
+      loadHistory();
+    } catch (err) { toast('Gagal menghapus: ' + err.message); }
+  });
   $('jsonDialog').addEventListener('click', (e) => {
     if (e.target.dataset.close !== undefined || e.target === $('jsonDialog')) $('jsonDialog').close();
   });
@@ -362,6 +384,9 @@
     try {
       const cfg = await api('/api/config');
       $('templateId').value = saved || cfg.template_id || '';
+      $('retentionInfo').textContent = cfg.retention_days > 0
+        ? `Riwayat & file hasil otomatis dihapus setelah ${cfg.retention_days} hari.`
+        : 'Riwayat & file hasil tidak dihapus otomatis.';
     } catch {
       $('templateId').value = saved;
     }

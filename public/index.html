@@ -90,8 +90,23 @@
     <!-- Riwayat -->
     <section id="riwayat" class="card">
       <div class="section-head">
-        <h2>Riwayat cetak</h2>
-        <button id="btnRefreshHistory" class="btn btn-ghost" type="button">Muat ulang</button>
+        <div>
+          <h2>Riwayat cetak</h2>
+          <p class="muted" id="retentionInfo"></p>
+        </div>
+        <div class="actions">
+          <button id="btnRefreshHistory" class="btn btn-ghost" type="button">Muat ulang</button>
+          <label class="field">
+            <span>Hapus riwayat</span>
+            <select id="clearRange">
+              <option value="7">Lebih lama dari 7 hari</option>
+              <option value="30">Lebih lama dari 30 hari</option>
+              <option value="90">Lebih lama dari 90 hari</option>
+              <option value="0">Semua riwayat</option>
+            </select>
+          </label>
+          <button id="btnClearHistory" class="btn btn-danger" type="button">Hapus</button>
+        </div>
       </div>
       <div class="table-wrap">
         <table class="dt-table">

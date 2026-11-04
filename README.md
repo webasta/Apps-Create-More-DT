@@ -196,7 +196,7 @@ cd /opt/apps/create-more-dt
 | `ASTA_CONCURRENCY` | 2 | Jumlah DT yang dikirim bersamaan |
 | `ASTA_DOWNLOAD_RESULT` | true | Unduh & simpan file bila Asta membalas URL |
 | `PUBLIC_BASE_URL`, `ASTA_CALLBACK_FIELD`, `CALLBACK_SECRET` | – | Untuk mode callback (lihat bagian 2) |
-| `JOB_RETENTION_DAYS` | 30 | Riwayat & file hasil lebih lama dari ini dihapus otomatis |
+| `JOB_RETENTION_DAYS` | 30 | Riwayat & file hasil lebih lama dari ini dihapus otomatis (dicek tiap 6 jam). `0` = tidak pernah dihapus otomatis. Hapus manual tersedia di halaman → Riwayat. |
 
 ---
 
@@ -222,6 +222,8 @@ POST /api/generate
 GET  /api/jobs?ids=<id1>,<id2>   → status & file_url tiap job
 GET  /files/<nama-file>          → file hasil (?download=1 untuk unduh)
 POST /api/callback/<jobId>?token= → dipanggil Asta (mode async)
+DELETE /api/jobs?older_than_days=N → hapus riwayat lebih lama dari N hari (0 = semua)
+DELETE /api/jobs/<id>            → hapus satu riwayat
 GET  /healthz
 ```
 Endpoint selain callback & healthz memakai Basic Auth yang sama.

@@ -18,13 +18,23 @@ try {
 }
 
 let saveTimer = null;
+function flush() {
+  clearTimeout(saveTimer);
+  saveTimer = null;
+  const tmp = jobsFile + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(jobs, null, 1));
+  fs.renameSync(tmp, jobsFile);
+}
 function persist() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    const tmp = jobsFile + '.tmp';
-    fs.writeFileSync(tmp, JSON.stringify(jobs, null, 1));
-    fs.renameSync(tmp, jobsFile);
-  }, 200);
+  saveTimer = setTimeout(flush, 200);
+}
+// simpan perubahan terakhir saat container dihentikan (docker stop / restart)
+for (const sig of ['SIGTERM', 'SIGINT']) {
+  process.once(sig, () => {
+    if (saveTimer) flush();
+    process.exit(0);
+  });
 }
 
 function newId() {
@@ -73,18 +83,42 @@ function filePath(name) {
   return fs.existsSync(full) ? full : null;
 }
 
-// Hapus job & file yang lebih tua dari JOB_RETENTION_DAYS
-function cleanup() {
-  const cutoff = Date.now() - config.jobRetentionDays * 86400000;
+const ACTIVE = new Set(['queued', 'processing']);
+
+// Hapus satu job beserta semua file hasilnya (PDF, DOCX, ...)
+function remove(id) {
+  const job = jobs[id];
+  if (!job) return false;
+  for (const f of fs.readdirSync(filesDir)) {
+    if (f.startsWith(`${id}__`)) fs.rmSync(path.join(filesDir, f), { force: true });
+  }
+  delete jobs[id];
+  persist();
+  return true;
+}
+
+/**
+ * Hapus job yang lebih tua dari N hari (N = 0 -> semua).
+ * Job yang sedang diproses tidak ikut dihapus.
+ */
+function removeOlderThan(days) {
+  const cutoff = Date.now() - Math.max(0, days) * 86400000;
+  let count = 0;
   for (const job of Object.values(jobs)) {
-    if (new Date(job.created_at).getTime() < cutoff) {
-      if (job.file_name) fs.rmSync(path.join(filesDir, job.file_name), { force: true });
-      delete jobs[job.id];
+    if (ACTIVE.has(job.status)) continue;
+    if (days === 0 || new Date(job.created_at).getTime() < cutoff) {
+      remove(job.id);
+      count++;
     }
   }
-  persist();
+  return count;
+}
+
+// Hapus otomatis sesuai JOB_RETENTION_DAYS (0 = tidak pernah dihapus otomatis)
+function cleanup() {
+  if (config.jobRetentionDays > 0) removeOlderThan(config.jobRetentionDays);
 }
 cleanup();
 setInterval(cleanup, 6 * 3600000).unref();
 
-module.exports = { create, update, get, list, saveFile, filePath, safeName };
+module.exports = { create, update, get, list, saveFile, filePath, safeName, remove, removeOlderThan, ACTIVE };
