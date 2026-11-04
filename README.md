@@ -148,8 +148,8 @@ curl http://127.0.0.1:3000/healthz
 ```
 
 Secara default port hanya terbuka untuk `127.0.0.1` (aman, diakses lewat Nginx).
-Mau tes cepat langsung via `http://IP-VPS:3000`? Ubah baris ports di `docker-compose.yml` menjadi `"3000:3000"`
-lalu `docker compose up -d` — tapi untuk pemakaian rutin sebaiknya lewat HTTPS.
+Mau diakses langsung via `http://IP-VPS:HOST_PORT`? Isi `HOST_BIND=0.0.0.0` di `.env`, buka port di firewall
+(`ufw allow <HOST_PORT>/tcp`), lalu `docker compose up -d`. Untuk pemakaian rutin sebaiknya tetap lewat HTTPS.
 
 ### 3.4 Nginx + HTTPS (disarankan, wajib bila pakai callback)
 
@@ -187,6 +187,7 @@ cd /opt/apps/create-more-dt
 | Variabel | Default | Keterangan |
 |---|---|---|
 | `HOST_PORT` | 3000 | Port di VPS |
+| `HOST_BIND` | 127.0.0.1 | `0.0.0.0` agar bisa diakses langsung via IP:port |
 | `APP_USERNAME` / `APP_PASSWORD` | – | Login halaman (Basic Auth). **Isi kalau app bisa diakses dari internet.** |
 | `ASTA_API_URL` | `https://temp.astakorpora.com/api/v1/generate` | Endpoint generate |
 | `ASTA_TEMPLATE_ID` | – | Template default (bisa diganti di halaman) |

@@ -9,9 +9,9 @@ services:
       PORT: 3000
       STORAGE_DIR: /app/storage
     ports:
-      # Default hanya bisa diakses dari VPS sendiri (lewat Nginx/reverse proxy).
-      # Ganti ke "3000:3000" kalau mau diakses langsung via IP:3000.
-      - "127.0.0.1:${HOST_PORT:-3000}:3000"
+      # HOST_BIND=127.0.0.1 -> hanya dari VPS sendiri (lewat Nginx)
+      # HOST_BIND=0.0.0.0   -> bisa diakses langsung via http://IP-VPS:HOST_PORT
+      - "${HOST_BIND:-127.0.0.1}:${HOST_PORT:-3000}:3000"
     volumes:
       - dt_storage:/app/storage
     logging:
