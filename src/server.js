@@ -13,6 +13,15 @@ const SHARED_FILE = path.join(__dirname, 'shared', 'dt-builder.js');
 const MAX_JSON = 5 * 1024 * 1024; // 5 MB
 const MAX_CALLBACK = 50 * 1024 * 1024; // 50 MB
 const MAX_DT_PER_REQUEST = 200;
+const TEMPLATE_FILE = path.join(config.storageDir, 'excel-template.xlsx');
+const TEMPLATE_META = path.join(config.storageDir, 'excel-template.json');
+function readTemplateMeta() {
+  try {
+    return JSON.parse(fs.readFileSync(TEMPLATE_META, 'utf8'));
+  } catch {
+    return null;
+  }
+}
 
 const STATIC_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -144,6 +153,41 @@ async function handle(req, res) {
       max_dt: MAX_DT_PER_REQUEST,
       retention_days: config.jobRetentionDays,
     });
+  }
+
+  // ---------- Template Excel kustom (disimpan di storage, tidak perlu deploy ulang) ----------
+  if (p === '/api/excel-template') {
+    if (req.method === 'GET') {
+      const meta = readTemplateMeta();
+      if (!meta || !fs.existsSync(TEMPLATE_FILE)) return sendJson(res, 404, { ok: false, error: 'Belum ada template kustom.' });
+      if (url.searchParams.get('info') === '1') return sendJson(res, 200, { ok: true, ...meta });
+      res.writeHead(200, {
+        'Content-Type': FILE_TYPES['.xlsx'],
+        'Content-Disposition': `attachment; filename="${meta.filename}"`,
+        'Cache-Control': 'no-store',
+      });
+      return fs.createReadStream(TEMPLATE_FILE).pipe(res);
+    }
+    if (req.method === 'POST') {
+      const buf = await readBody(req, 10 * 1024 * 1024);
+      // .xlsx = arsip ZIP, diawali "PK"
+      if (buf.length < 4 || buf[0] !== 0x50 || buf[1] !== 0x4b) {
+        return sendJson(res, 400, { ok: false, error: 'File harus berformat .xlsx.' });
+      }
+      let name = decodeURIComponent(String(req.headers['x-filename'] || 'Template_DT.xlsx'));
+      name = store.safeName(name.replace(/\.xlsx$/i, '')) + '.xlsx';
+      fs.writeFileSync(TEMPLATE_FILE, buf);
+      const meta = { filename: name, size: buf.length, uploaded_at: new Date().toISOString() };
+      fs.writeFileSync(TEMPLATE_META, JSON.stringify(meta));
+      console.log(`[template] template Excel diganti: ${name}`);
+      return sendJson(res, 200, { ok: true, ...meta });
+    }
+    if (req.method === 'DELETE') {
+      fs.rmSync(TEMPLATE_FILE, { force: true });
+      fs.rmSync(TEMPLATE_META, { force: true });
+      console.log('[template] kembali ke template Excel bawaan');
+      return sendJson(res, 200, { ok: true });
+    }
   }
 
   // Hapus riwayat: DELETE /api/jobs?older_than_days=N  (N=0 -> semua)

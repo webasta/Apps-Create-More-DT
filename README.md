@@ -17,6 +17,10 @@ Di app ini, **1 lokasi kirim = 1 DT**, masing-masing dengan daftar barangnya sen
 
 Unduh contoh lewat tombol **Unduh template Excel** di halaman. File punya 2 sheet:
 
+> **Ganti template Excel:** klik **Ganti template** di halaman lalu pilih file `.xlsx` Anda (wajib punya sheet
+> `Header` & `Items` dengan kolom `no_dt`, dan `description` di Items). File disimpan di server (volume `dt_storage`),
+> jadi tombol unduh langsung memakai file itu tanpa deploy ulang. **Kembalikan ke bawaan** untuk membatalkan.
+
 **Sheet `Header`** — 1 baris = 1 DT
 
 | no_dt | tanggal | customer_name | pic | ref_so | lokasi_tujuan | alamat | penerima | telp_penerima | keterangan |
@@ -224,6 +228,7 @@ GET  /files/<nama-file>          → file hasil (?download=1 untuk unduh)
 POST /api/callback/<jobId>?token= → dipanggil Asta (mode async)
 DELETE /api/jobs?older_than_days=N → hapus riwayat lebih lama dari N hari (0 = semua)
 DELETE /api/jobs/<id>            → hapus satu riwayat
+GET|POST|DELETE /api/excel-template → unduh / ganti / reset template Excel kustom
 GET  /healthz
 ```
 Endpoint selain callback & healthz memakai Basic Auth yang sama.

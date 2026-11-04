@@ -34,7 +34,72 @@
   }
 
   // ---------- template Excel ----------
+  // Template kustom (diunggah user) diutamakan; kalau tidak ada, pakai template bawaan
+  let customTpl = null;
+  async function loadTemplateInfo() {
+    try {
+      const res = await fetch('/api/excel-template?info=1');
+      customTpl = res.ok ? await res.json() : null;
+    } catch { customTpl = null; }
+    const info = $('tplInfo');
+    if (customTpl) {
+      const t = new Date(customTpl.uploaded_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+      info.innerHTML = `Template aktif: <b>${esc(customTpl.filename)}</b> (diunggah ${esc(t)}) · <a data-tpl="default">Unduh bawaan</a> · <a data-tpl="reset">Kembalikan ke bawaan</a>`;
+    } else {
+      info.textContent = 'Template aktif: bawaan aplikasi.';
+    }
+  }
+
   function downloadTemplate() {
+    if (customTpl) {
+      window.location.href = '/api/excel-template';
+      return;
+    }
+    downloadDefaultTemplate();
+  }
+
+  async function uploadTemplate(file) {
+    if (!/\.xlsx$/i.test(file.name)) return toast('File template harus .xlsx');
+    // cek struktur: harus punya sheet Header & Items dengan kolom no_dt
+    if (typeof XLSX !== 'undefined') {
+      try {
+        const wb = XLSX.read(await file.arrayBuffer());
+        const names = wb.SheetNames.map((n) => n.trim().toLowerCase());
+        const problems = [];
+        ['header', 'items'].forEach((n) => {
+          const i = names.indexOf(n);
+          if (i < 0) { problems.push(`sheet "${n === 'header' ? 'Header' : 'Items'}" tidak ada`); return; }
+          const first = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[i]], { header: 1 })[0] || [];
+          const cols = first.map((c) => DTBuilder.normalizeKey(c));
+          if (!cols.includes('no_dt')) problems.push(`sheet "${wb.SheetNames[i]}" tidak punya kolom no_dt`);
+          if (n === 'items' && !cols.includes('description')) problems.push(`sheet "${wb.SheetNames[i]}" tidak punya kolom description`);
+        });
+        if (problems.length && !confirm(`Template ini tidak akan terbaca dengan benar saat di-upload untuk cetak:\n- ${problems.join('\n- ')}\n\nTetap simpan sebagai template?`)) return;
+      } catch { /* biarkan server yang memeriksa */ }
+    }
+    try {
+      const res = await fetch('/api/excel-template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream', 'X-Filename': encodeURIComponent(file.name) },
+        body: file,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
+      toast('Template Excel diganti. Tombol "Unduh template Excel" sekarang memakai file ini.');
+      loadTemplateInfo();
+    } catch (err) { toast('Gagal mengganti template: ' + err.message, 6000); }
+  }
+
+  async function resetTemplate() {
+    if (!confirm('Kembalikan template Excel ke bawaan aplikasi? File template kustom akan dihapus.')) return;
+    try {
+      await api('/api/excel-template', { method: 'DELETE' });
+      toast('Template Excel kembali ke bawaan.');
+      loadTemplateInfo();
+    } catch (err) { toast('Gagal: ' + err.message); }
+  }
+
+  function downloadDefaultTemplate() {
     if (typeof XLSX === 'undefined') return toast('Library Excel belum termuat. Periksa koneksi internet lalu muat ulang halaman.');
     const header = [
       ['no_dt', 'tanggal', 'customer_name', 'pic', 'ref_so', 'lokasi_tujuan', 'alamat', 'penerima', 'telp_penerima', 'keterangan'],
@@ -311,6 +376,16 @@
 
   // ---------- events ----------
   $('btnTemplate').addEventListener('click', downloadTemplate);
+  $('tplInput').addEventListener('change', (e) => {
+    const f = e.target.files[0];
+    if (f) uploadTemplate(f);
+    e.target.value = '';
+  });
+  $('tplInfo').addEventListener('click', (e) => {
+    const a = e.target.dataset && e.target.dataset.tpl;
+    if (a === 'default') downloadDefaultTemplate();
+    if (a === 'reset') resetTemplate();
+  });
   $('fileInput').addEventListener('change', (e) => {
     const f = e.target.files[0];
     if (f) readFile(f);
@@ -391,5 +466,6 @@
       $('templateId').value = saved;
     }
     loadHistory();
+    loadTemplateInfo();
   })();
 })();

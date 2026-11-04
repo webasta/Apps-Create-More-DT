@@ -56,6 +56,11 @@ code { background: #eef0f4; padding: 1px 5px; border-radius: 4px; font-size: 12.
 .btn-ghost { background: transparent; color: var(--primary); padding: 6px 8px; }
 .btn-sm { padding: 4px 9px; font-size: 12.5px; }
 .field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.tpl-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.tpl-info { font-size: 12.5px; margin: 8px 0 0; }
+.tpl-info a { color: var(--primary); cursor: pointer; text-decoration: none; font-weight: 600; }
+.tpl-info a:hover { text-decoration: underline; }
+label.btn { display: inline-block; }
 .btn-danger { background: var(--surface); border-color: #f1c4bf; color: var(--err); }
 .btn-danger:hover { background: var(--err-soft); }
 .btn-del { color: var(--muted); }

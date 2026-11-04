@@ -30,7 +30,12 @@
           Isi sheet <b>Header</b> (1 baris = 1 DT / 1 lokasi kirim) dan sheet <b>Items</b>
           (barang per DT, dihubungkan lewat <code>no_dt</code>). Barang yang dikirim ke 3 lokasi = 3 DT.
         </p>
-        <button id="btnTemplate" class="btn btn-secondary" type="button">Unduh template Excel</button>
+        <div class="tpl-row">
+          <button id="btnTemplate" class="btn btn-secondary" type="button">Unduh template Excel</button>
+          <label class="btn btn-ghost" for="tplInput">Ganti template</label>
+          <input id="tplInput" type="file" accept=".xlsx" hidden>
+        </div>
+        <p class="tpl-info muted" id="tplInfo"></p>
       </div>
 
       <div class="card">
