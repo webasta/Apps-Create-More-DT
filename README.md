@@ -191,7 +191,7 @@ cd /opt/apps/create-more-dt
 | `APP_USERNAME` / `APP_PASSWORD` | – | Login halaman (Basic Auth). **Isi kalau app bisa diakses dari internet.** |
 | `ASTA_API_URL` | `https://temp.astakorpora.com/api/v1/generate` | Endpoint generate |
 | `ASTA_TEMPLATE_ID` | – | Template default (bisa diganti di halaman) |
-| `ASTA_AUTH_HEADER` / `ASTA_API_KEY` | `Authorization` / – | Header auth ke Asta, mis. `Bearer xxx` |
+| `ASTA_AUTH_HEADER` / `ASTA_API_KEY` | `x-api-key` / – | API key organisasi Asta (Member Area → API Keys) |
 | `ASTA_TIMEOUT_MS` | 60000 | Batas waktu per DT |
 | `ASTA_CONCURRENCY` | 2 | Jumlah DT yang dikirim bersamaan |
 | `ASTA_DOWNLOAD_RESULT` | true | Unduh & simpan file bila Asta membalas URL |

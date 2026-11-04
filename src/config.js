@@ -33,7 +33,7 @@ module.exports = {
   // Asta Document Services
   astaApiUrl: env.ASTA_API_URL || 'https://temp.astakorpora.com/api/v1/generate',
   astaTemplateId: env.ASTA_TEMPLATE_ID || '',
-  astaAuthHeader: env.ASTA_AUTH_HEADER || 'Authorization',
+  astaAuthHeader: env.ASTA_AUTH_HEADER || 'x-api-key',
   astaApiKey: env.ASTA_API_KEY || '',
   astaTimeoutMs: int(env.ASTA_TIMEOUT_MS, 60000),
   astaConcurrency: Math.max(1, int(env.ASTA_CONCURRENCY, 2)),
